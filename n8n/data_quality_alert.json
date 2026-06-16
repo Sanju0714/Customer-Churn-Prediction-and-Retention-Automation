@@ -1,0 +1,209 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -48,
+        0
+      ],
+      "id": "8f2fc59e-b536-4ea6-b8c2-21505e0c070d",
+      "name": "Manual Trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "for (const item of $input.all()) {\n\n  const requiredFields = [\n    'customer_id',\n    'age',\n    'orders_last_30_days',\n    'avg_order_value',\n    'days_since_last_order',\n    'churn'\n  ];\n\n  let missing = 0;\n\n  requiredFields.forEach(field => {\n    if (\n      item.json[field] === undefined ||\n      item.json[field] === null ||\n      item.json[field] === ''\n    ) {\n      missing++;\n    }\n  });\n\n  item.json.missing_values = missing;\n  item.json.status = missing > 0 ? 'FAIL' : 'PASS';\n\n}\n\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "b3f4ba22-780c-46cf-9f27-e2d979ee42db",
+      "name": "Data Validation"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "Generate a professional customer retention email.\n\nCustomer ID: {{ $json.customer_id }}\nCustomer Segment: {{ $json.special_segment }}\nOffer: {{ $json.offer }}\n\nRequirements:\n- Friendly and professional tone\n- Personalized based on the customer segment\n- Mention the offer naturally\n- Maximum 80 words\n- Return ONLY the email body\n- No subject line\n- No markdown formatting\n- No email headers\n\nSign off as:\nSwiggy Team"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        832,
+        0
+      ],
+      "id": "f21c7bc8-95a3-4e33-b6c8-8b3a22f16191",
+      "name": "AI Email Generator",
+      "credentials": {
+        "openAiApi": {
+          "id": "S2WFZCpp0nYKP9ib",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "gorlisanjana143@gmail.com",
+        "subject": "We Miss You at Swiggy!",
+        "emailType": "text",
+        "message": "={{ $json.output[0].content[0].text }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1264,
+        0
+      ],
+      "id": "e19d06dd-2ce6-4b65-98f8-a3d031485356",
+      "name": "Gmail Campaign Sender",
+      "webhookId": "495a958a-fb32-438f-a185-20e7c7f71124",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "QPNQdzAsGoRkHUaL",
+          "name": "Gmail account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "16rq336bNIGqcw4g-QiPPl3BCBEJm17Js8CFzmhKjo9w",
+          "mode": "list",
+          "cachedResultName": "customer_campaign_output",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/16rq336bNIGqcw4g-QiPPl3BCBEJm17Js8CFzmhKjo9w/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 925587994,
+          "mode": "list",
+          "cachedResultName": "customer_campaign_output.csv",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/16rq336bNIGqcw4g-QiPPl3BCBEJm17Js8CFzmhKjo9w/edit#gid=925587994"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        208,
+        0
+      ],
+      "id": "41c68ccc-282a-4c2b-ae60-0e0573ab9d30",
+      "name": "Get row(s) in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ky4MOzn6rElNynrc",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "for (const item of $input.all()) {\n\n  const churn = Number(item.json.churn);\n\n  if (churn === 1) {\n    item.json.special_segment = \"Churn Risk\";\n  } else {\n    item.json.special_segment = \"Active Customer\";\n  }\n\n  item.json.offer = item.json.action;\n}\n\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        624,
+        0
+      ],
+      "id": "0c1f2bad-af99-4a37-bb5e-d830158946f4",
+      "name": "Customer Segmentation"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Data Validation": {
+      "main": [
+        [
+          {
+            "node": "Customer Segmentation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Email Generator": {
+      "main": [
+        [
+          {
+            "node": "Gmail Campaign Sender",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail Campaign Sender": {
+      "main": [
+        []
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Data Validation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Customer Segmentation": {
+      "main": [
+        [
+          {
+            "node": "AI Email Generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "f1f493d0-0bf6-4458-a041-3bdd5766705f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "109f42d0b5bdd25feca7c2d323434119522ca4954d4844b1587656a5310ae01e"
+  },
+  "nodeGroups": [],
+  "id": "dqPo5EuOJagBZpxF",
+  "tags": []
+}
